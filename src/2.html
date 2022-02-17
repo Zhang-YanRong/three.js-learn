@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+  <script text="module" src="../libs/three.js/Three.js"></script>
+</head>
+<body>
+  <div id="puidu-webgl-output"></div>
+
+  <script type="module">
+    import {Scene, PerspectiveCamera, WebGLRenderer, BoxGeometry, MeshBasicMaterial, Mesh} from '../libs/three.js/Three.js'
+
+    // 实例化场景
+    var scene = new Scene()
+
+    // 实例化透视摄像机
+    var camera = new PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000)
+
+    // 实例化渲染器
+    var render = new WebGLRenderer()
+    render.setSize(window.innerWidth, window.innerHeight)
+
+    document.getElementById("puidu-webgl-output").appendChild(render.domElement)
+
+    // 创建一个立方体
+    var geometry = new BoxGeometry() 
+    var material = new MeshBasicMaterial({color: 0xff2200}) // 设置材质
+    var cube =  new Mesh(geometry, material) // 组合立方体和材质，成为一个新的网格对象
+    scene.add(cube)
+
+    // 摄像机的位置
+    camera.position.z = 5;
+
+    // 立方体旋转角度
+    cube.rotation.x += 0.80
+    cube.rotation.y += 0.80
+
+    render.render(scene, camera)
+  </script>
+</body>
+</html>

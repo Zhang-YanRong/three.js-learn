@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="./three.js"></script>
+  <title>Document</title>
+</head>
+<body>
+  
+  <script>
+    var scene = new THREE.Scene();
+    console.log(scene);
+
+    // THREE.PerspectiveCamera透视摄像机
+    // 我们创建一个，夹角为75度，相机拍摄面的长宽比为窗口宽度/窗口高度，近裁剪面为1，远裁剪面为1000
+    // 1和1000的单位可以是米，也可以是厘米，这个是自己想象(目前是这样理解的)
+    var camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1000 );
+
+    // 3. 定义渲染器
+    var renderer = new THREE.WebGLRenderer();
+    renderer.setClearColor("#ffffff"); // 每次设置渲染器，清空渲染器颜色，变为白色
+
+    // 4. 设置渲染器大小
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    console.log(renderer);
+    // 5. 将渲染器添加到 body 上
+    document.body.appendChild(renderer.domElement);
+    
+
+    // 6. 定义几何体
+    // 宽度，高度，深度，后面不设置默认为 1
+    // width, height, depth, widthSegments, heightSegments, depthSegments
+    var geometry = new THREE.BoxGeometry(2, 2, 2);
+    // 7. 定义材质
+    var material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+    // 8. 定义网格， 几何体和材质组成网格
+    var cube = new THREE.Mesh(geometry, material);
+    // 9. 将网格模型添加到场景中
+    scene.add(cube);
+    // 10. 改变相机位置
+    // 此时我们的相机在坐标原点,物体也在坐标原点,所以我们什么也看不到
+    camera.position.z = 10; // 向屏幕外移动 5 米
+
+    // 11. 定义渲染方法
+    function render() {
+      // 当浏览器空闲，就不断调用传入的函数
+      requestAnimationFrame(render);
+      cube.rotation.x += 0.01; // 围绕 x 轴旋转
+      cube.rotation.y += 0.01; // 围绕 y 轴旋转
+      // 通过场景和相机，把最终显示的东西渲染出来，渲染到 renderer.domElement 上
+      renderer.render(scene, camera);
+    }
+    render();
+
+
+  </script>
+</body>
+</html>
