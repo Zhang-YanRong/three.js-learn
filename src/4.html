@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+  <script text="module" src="../libs/three.js/Three.js"></script>
+  <style>
+    * {
+      margin: 0;
+    }
+  </style>
+</head>
+<body>
+  <div id="puidu-webgl-output"></div>
+  <div id="myStats"></div>
+
+  <script type="module">
+    import {Scene, PerspectiveCamera, WebGLRenderer, BoxGeometry, MeshBasicMaterial, Mesh, AxesHelper, PlaneGeometry,
+      MeshLambertMaterial, AmbientLight, SpotLight, Vector2
+    } from '../libs/three.js/Three.js'
+
+    import {Stats} from '../libs/Stats/Stats.js'
+    import {dat} from '../libs/dat.gui/dat.gui.js'
+
+    // 实例化场景
+    var scene = new Scene()
+
+    // 实例化透视摄像机
+    var camera = new PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000)
+
+    // 实例化渲染器
+    var render = new WebGLRenderer()
+    render.setSize(window.innerWidth, window.innerHeight)
+    // render.shadowMap.enabled = true
+
+    document.getElementById("puidu-webgl-output").appendChild(render.domElement)
+
+    // 添加坐标轴
+    var axes = new AxesHelper(50)
+    // axes.setColors(0x00ffff, 0xff00ff, 0xffff00,) // 设置坐标轴颜色
+    scene.add(axes)
+
+    // 创建一个立方体
+    var geometry = new BoxGeometry(8,8,8) // 参数是放大
+    // var material = new MeshBasicMaterial({color: 0xff2200}) // 设置材质 参数是颜色值
+    var material = new MeshLambertMaterial({color: 0xff2200}) // 设置材质 参数是颜色值
+    var cube =  new Mesh(geometry, material) // 组合立方体和材质，成为一个新的网格对象
+    scene.add(cube)
+
+    // cube.castShadow = true
+    cube.position.x = 10
+    cube.position.y = 10
+    cube.position.z = 10
+
+
+    // 立方体旋转角度
+    // cube.rotation.x += 0.80
+    // cube.rotation.y += 0.80
+
+    // 平面开始 =============================
+    // 新建平面几何体 (宽，高)
+    var planeGeometry = new PlaneGeometry(100, 100)
+    var planeMaterial = new MeshLambertMaterial({color: 0xCCCCCC}) // 新建lamber材质
+    var plane = new Mesh(planeGeometry, planeMaterial)
+
+    plane.rotation.x = -0.5 * Math.PI // 旋转90°
+    plane.position.set(15, 0, 0) // 沿着x轴向右15个单位
+    // plane.receiveShadow = true
+    scene.add(plane)
+
+    // lamber材质的平面需要 lamber 光源才能展示
+    // AmbientLight 光源的颜色会用的整个场景中的对象 该光源并没有特殊的来源方向 并且他不会生成阴影 所以不能作为唯一的光源来使用
+    var lamberLight = new AmbientLight(0xAAAAAA)
+    scene.add(lamberLight)
+    // 平面结束 =============================
+
+
+    // 摄像机的位置
+    camera.position.x = -35;
+    camera.position.y = 45;
+    camera.position.z = 35;
+
+    // 摄像机对准场景中心点
+    camera.lookAt(scene.position)
+
+    // 三维物体投影效果开始 =============================
+    // 1.要有展示阴影的光源
+     var spotLight = new SpotLight(0xFFFFFF)
+     spotLight.position.set(-60, 40, 65)
+
+    // 2.设置castShadow的值为true
+    spotLight.castShadow = true
+
+    // 3.设置阴影效果
+    spotLight.shadow.mapSize = new Vector2(1024, 1024)
+    spotLight.shadow.camera.far = 130
+    spotLight.shadow.camera.near = 40
+
+    // 4.渲染器的shadowMap.enable 为true
+    render.shadowMap.enabled = true
+
+    // 5.设置立方体的castShadow 为真
+    cube.castShadow = true
+
+    // 6.地面接收阴影的对象需要设置receiveShadow 为真
+    plane.receiveShadow = true
+
+    scene.add(spotLight)
+
+    // 三维物体投影效果结束 =============================
+
+    var stats = addStats()
+
+    // 记录动画修改的属性值
+    var ctrlObj = {
+      rotationSpeed: 0.01, // 旋转速度
+      jumpSpeed: 0.01 // 跳跃速度
+    }
+    var ctrl = new dat.GUI();
+    ctrl.add(ctrlObj, "rotationSpeed", 0, 1) // 设置旋转速度的范围0-1
+    ctrl.add(ctrlObj, "jumpSpeed", 0, 1) // 设置跳跃速度的范围0-1
+
+    // render.render(scene, camera)
+    renderScene()
+
+    var gap = 0 // 立方体跳跃速度
+    function renderScene(){
+      // 立方体旋转
+      // cube.rotation.x += 0.01
+      // cube.rotation.y += 0.01
+      // cube.rotation.z += 0.01
+
+      // 立方体旋转速度使用统一参数
+      cube.rotation.x += ctrlObj.rotationSpeed
+      cube.rotation.y += ctrlObj.rotationSpeed
+      cube.rotation.z += ctrlObj.rotationSpeed
+
+      // 立方体跳跃
+      // gap += 0.01
+      gap += ctrlObj.jumpSpeed
+      cube.position.x = 25 + (20 * (Math.sin(gap)))
+      cube.position.y = 6 + (20 * (Math.abs(Math.cos(gap))))
+      
+      stats.update() // 更新stats
+      
+      // 自动刷新
+      requestAnimationFrame(renderScene)
+      render.render(scene, camera)
+    }
+
+    // 使用stats添加统计对象
+    function addStats(){
+      var stats = new Stats()
+      stats.domElement.style.position = 'absolute'
+      stats.domElement.style.let = '0px'
+      stats.domElement.style.top = '0px'
+      stats.setMode(0) // 检测画面每秒传输帧数
+
+      document.getElementById('myStats').appendChild(stats.domElement)
+      return stats
+    }
+
+    // 监听窗口大小重置渲染尺寸 自适应
+    window.addEventListener('resize', onWindowResize, false)
+
+    function onWindowResize() {
+      camera.aspect = window.innerWidth/window.innerHeight // 重新计算浏览器的长宽比
+      camera.updateProjectionMatrix() // 更新相机的投影矩阵
+      render.setSize(window.innerWidth, window.innerHeight) // 渲染器重新设置宽高
+    }
+  </script>
+</body>
+</html>
