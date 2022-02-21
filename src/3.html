@@ -12,7 +12,7 @@
 
   <script type="module">
     import {Scene, PerspectiveCamera, WebGLRenderer, BoxGeometry, MeshBasicMaterial, Mesh, AxesHelper, PlaneGeometry,
-      MeshLambertMaterial, AmbientLight
+      MeshLambertMaterial, AmbientLight, SpotLight, Vector2
     } from '../libs/three.js/Three.js'
 
     // 实例化场景
@@ -24,6 +24,7 @@
     // 实例化渲染器
     var render = new WebGLRenderer()
     render.setSize(window.innerWidth, window.innerHeight)
+    // render.shadowMap.enabled = true
 
     document.getElementById("puidu-webgl-output").appendChild(render.domElement)
 
@@ -34,10 +35,12 @@
 
     // 创建一个立方体
     var geometry = new BoxGeometry(8,8,8) // 参数是放大
-    var material = new MeshBasicMaterial({color: 0xff2200}) // 设置材质 参数是颜色值
+    // var material = new MeshBasicMaterial({color: 0xff2200}) // 设置材质 参数是颜色值
+    var material = new MeshLambertMaterial({color: 0xff2200}) // 设置材质 参数是颜色值
     var cube =  new Mesh(geometry, material) // 组合立方体和材质，成为一个新的网格对象
     scene.add(cube)
 
+    // cube.castShadow = true
     cube.position.x = 10
     cube.position.y = 10
     cube.position.z = 10
@@ -50,11 +53,12 @@
     // 平面开始 =============================
     // 新建平面几何体 (宽，高)
     var planeGeometry = new PlaneGeometry(100, 100)
-    var planeMaterial = new MeshLambertMaterial({color: 0x222222}) // 新建lamber材质
+    var planeMaterial = new MeshLambertMaterial({color: 0xCCCCCC}) // 新建lamber材质
     var plane = new Mesh(planeGeometry, planeMaterial)
 
     plane.rotation.x = -0.5 * Math.PI // 旋转90°
     plane.position.set(15, 0, 0) // 沿着x轴向右15个单位
+    // plane.receiveShadow = true
     scene.add(plane)
 
     // lamber材质的平面需要 lamber 光源才能展示
@@ -74,7 +78,28 @@
 
     // 三维物体投影效果开始 =============================
     // 1.要有展示阴影的光源
-    
+     var spotLight = new SpotLight(0xFFFFFF)
+     spotLight.position.set(-60, 40, 65)
+
+    // 2.设置castShadow的值为true
+    spotLight.castShadow = true
+
+    // 3.设置阴影效果
+    spotLight.shadow.mapSize = new Vector2(1024, 1024)
+    spotLight.shadow.camera.far = 130
+    spotLight.shadow.camera.near = 40
+
+    // 4.渲染器的shadowMap.enable 为true
+    render.shadowMap.enabled = true
+
+    // 5.设置立方体的castShadow 为真
+    cube.castShadow = true
+
+    // 6.地面接收阴影的对象需要设置receiveShadow 为真
+    plane.receiveShadow = true
+
+    scene.add(spotLight)
+
     // 三维物体投影效果结束 =============================
 
 
