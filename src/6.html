@@ -1,11 +1,7 @@
 <!-- 
-1.场景的方法和属性
-2.给几何体添加name，获取几何体的属性
-3.删除指定对象 scene.remove()
-4.通过dat.GUI添加界面操作来删除对象
-5.scene.traverse 被调用者和每个后代对象都会调用该函数
-6.场景的雾化
-7.场景的overrideMaterial
+1.圆环几何体
+2.圆柱几何体
+3.自定义几何体
 -->
 <!DOCTYPE html>
 <html lang="en">
@@ -27,7 +23,8 @@
 
   <script type="module">
     import {Scene, PerspectiveCamera, WebGLRenderer, BoxGeometry, MeshBasicMaterial, Mesh, AxesHelper, PlaneGeometry,
-      MeshLambertMaterial, AmbientLight, SpotLight, Vector2, Fog, FogExp2
+      MeshLambertMaterial, AmbientLight, SpotLight, Vector2, Fog, FogExp2, TorusGeometry, CylinderGeometry, BufferAttribute,
+      DoubleSide,BufferGeometry
     } from '../libs/three.js/Three.js'
 
     import {Stats} from '../libs/Stats/Stats.js'
@@ -36,19 +33,12 @@
     // 实例化场景
     var scene = new Scene()
 
-    // 雾化
-    // scene.fog = new Fog(0xffffff, 0.01, 100) // 雾化方式1: 1.雾化颜色 2.雾化近处的值 3.雾化远处的值
-    // scene.fog = new FogExp2(0x0000ff, 0.03) // 雾化方式2 1.雾化颜色 2.雾化的浓度
-    scene.overrideMaterial = new MeshLambertMaterial({color: 0x0000ff})
-    // scene.overrideMaterial = new MeshBasicMaterial({color: 0x0000ff}) // 基础材质会失去光源效果
-
     // 实例化透视摄像机
     var camera = new PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000)
 
     // 实例化渲染器
     var render = new WebGLRenderer()
     render.setSize(window.innerWidth, window.innerHeight)
-    // render.shadowMap.enabled = true
 
     document.getElementById("puidu-webgl-output").appendChild(render.domElement)
 
@@ -57,71 +47,90 @@
     // axes.setColors(0x00ffff, 0xff00ff, 0xffff00,) // 设置坐标轴颜色
     scene.add(axes)
 
-    // 创建一个立方体
-    var geometry = new BoxGeometry(8,8,8) // 参数是放大
-    // var material = new MeshBasicMaterial({color: 0xff2200}) // 设置材质 参数是颜色值
-    var material = new MeshLambertMaterial({color: 0xff2200}) // 设置材质 参数是颜色值
-    var cube =  new Mesh(geometry, material) // 组合立方体和材质，成为一个新的网格对象
-    scene.add(cube)
+    // 圆环几何体
+    var torusgeo = new TorusGeometry(5, 2, 10, 100, Math.PI*2) // 1.圆环半径 2.管道半径 3.圆环的分段数 4.管道分段数 5.圆心角 Math.PI*2
+    var torusMaterial = new MeshLambertMaterial({color: 0xff2288})
+    var tours = new Mesh(torusgeo, torusMaterial)
+    tours.castShadow = true
+    tours.position.x = 10
+    tours.position.y = 10
+    tours.position.z = 10
+    scene.add(tours)
 
-    // 创建一个长宽高为4的集合体
-    var geometry2 = new BoxGeometry(4,4,4,)
-    var material2 = new MeshLambertMaterial({color: 0x00ff00})
-    var cube2 = new Mesh(geometry2, material2)
-    cube2.castShadow = true
+    // 圆柱几何体
+    var cylinderGeo = new CylinderGeometry(2, 2, 2, 10, 3, false, 20) // 1.顶部半径 2.低部半径 3.高度 4.圆柱侧面周围的分段数 5.圆柱侧面沿着其高度的分段数 6.圆柱的底面是开放/封顶 7.第一个分段的起始角度 8.圆柱地面扇区的中近郊默认值
+    var cylinderMaterial = new MeshLambertMaterial({color: 0x00CCff})
+    var cylinder = new Mesh(cylinderGeo, cylinderMaterial)
+    cylinder.position.x = -10
+    cylinder.position.y = 10
+    cylinder.position.z = 10
+    cylinder.castShadow = true
+    scene.add(cylinder)
 
-    // cube.castShadow = true
-    cube.position.x = 10
-    cube.position.y = 10
-    cube.position.z = 10
+    // 自定义几何体
+    var geometry = new BufferGeometry()
+    var vertices = new Float32Array([
+      // 第一个面
+      0,0,0,
+      10,0,0,
+      0,10,0,
+      10,0,0,
+      0,10,0,
+      10,10,0,
 
-    cube2.position.x = -10
-    cube2.position.y = 15
-    cube2.position.z = 10
-    cube2.name = 'cube2'
-    scene.add(cube2)
+      // 第二个面
+      0,0,0,
+      10,0,0,
+      10,0,10,
+      0,0,10,
+      0,0,0,
+      10,0,10,
 
-    // 获取场景中的对象个数
-    // console.log(scene.children.length)
+      // 第三个面
+      10,0,0,
+      10,10,0,
+      10,10,10,
+      10,0,10,
+      10,0,0,
+      10,10,10,
 
-    // 获取对象的属性
-    var findObj = scene.getObjectByName('cube2', false) // 第二个参数表示尽在调用者子元素中查找
-    // console.log(findObj.position)
+      // 第四个面
+      0,0,10,
+      10,0,10,
+      10,10,10,
+      0,0,10,
+      0,10,10,
+      10,0,10,
 
+      // 五个面
+      0,0,0,
+      0,0,10,
+      0,10,10,
+      0,0,0,
+      0,10,0,
+      0,10,10,
+
+      // 六个面
+      0,10,0,
+      10,10,0,
+      10,10,10,
+      0,10,0,
+      0,10,10,
+      10,10,10
+
+
+    ])
+
+    var attribute = new BufferAttribute(vertices, 3)
+    geometry.attributes.position = attribute
+    var material = new MeshBasicMaterial({
+      color: 0x0000ff,
+      side: DoubleSide
+    })
+
+    var mesh = new Mesh(geometry, material)
+    scene.add(mesh)
     
-    // dat.GUI控制删除
-    var ctrObj2 = new function() {
-      // 删除查找到的对象
-      this.removeFindCube =  function removeObj() {
-        if(findObj instanceof Mesh) { // 检查查找到的对象是不是mes对象 避免删除光源等对象
-          scene.remove(findObj)
-        }
-      }
-
-      // dat.GUI 添加立方体
-      this.addNewBox = function addNewBox() {
-        var geometryTemp = new BoxGeometry(4,4,4,)
-        var materialTemp = new MeshLambertMaterial({color: 0x0000ff})
-        var cubeTemp = new Mesh(geometry2, material2)
-        cubeTemp.castShadow = true
-
-        cubeTemp.position.x = -Math.random() * 20
-        cubeTemp.position.y = Math.random() * 20
-        cubeTemp.position.z = Math.random() * 20
-        scene.add(cubeTemp)
-
-      }
-
-    }
-
-    var ctrl2 = new dat.GUI()
-    ctrl2.add(ctrObj2, 'removeFindCube')
-    ctrl2.add(ctrObj2, 'addNewBox')
-
-    // 立方体旋转角度
-    // cube.rotation.x += 0.80
-    // cube.rotation.y += 0.80
-
     // 平面开始 =============================
     // 新建平面几何体 (宽，高)
     var planeGeometry = new PlaneGeometry(100, 100)
@@ -165,7 +174,7 @@
     render.shadowMap.enabled = true
 
     // 5.设置立方体的castShadow 为真
-    cube.castShadow = true
+    // cube.castShadow = true
 
     // 6.地面接收阴影的对象需要设置receiveShadow 为真
     plane.receiveShadow = true
@@ -193,16 +202,6 @@
     var gap = 0 // 立方体跳跃速度
     function renderScene(){
 
-      // 立方体旋转
-      // cube.rotation.x += 0.01
-      // cube.rotation.y += 0.01
-      // cube.rotation.z += 0.01
-
-      // 立方体旋转速度使用统一参数
-      // cube.rotation.x += ctrlObj.rotationSpeed
-      // cube.rotation.y += ctrlObj.rotationSpeed
-      // cube.rotation.z += ctrlObj.rotationSpeed
-
       scene.traverse(function(obj){
         if(obj instanceof Mesh && obj != plane) { // 判断对象是mesh 且 不是地板对象
           obj.rotation.x += 0.01
@@ -214,8 +213,7 @@
       // 立方体跳跃
       // gap += 0.01
       gap += ctrlObj.jumpSpeed
-      cube.position.x = 25 + (20 * (Math.sin(gap)))
-      cube.position.y = 6 + (20 * (Math.abs(Math.cos(gap))))
+     
       
       stats.update() // 更新stats
       
