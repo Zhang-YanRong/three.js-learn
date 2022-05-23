@@ -1,0 +1,220 @@
+<!-- 
+  粒子动画
+  
+  从r125开始，THREE.Geometry被弃用，不再是核心的一部分。强烈建议使用THREE.BufferGeometry。
+  通过添加保存顶点颜色的附加缓冲区属性，可以应用逐顶点颜色。还必须将材质属性vertexColors设置为true。
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+  <script text="module" src="../libs/three.js/Three.js"></script>
+  <style>
+    * {
+      margin: 0;
+    }
+  </style>
+</head>
+<body>
+  <div id="canvas"></div>
+  <div class="relative w-screen h-screen">
+    <div class="absolute w-screen h-screen flex-center opacity-0">
+      <img src="https://i.loli.net/2021/03/08/uYcvELkr4dqFj9w.jpg" class="w-60 cursor-pointer" alt="" crossorigin="anonymous" />
+    </div>
+    <div class="particle-explode w-full h-full bg-black"></div>
+  </div>
+  
+
+  <script type="module">
+    import {Scene, Fog, GridHelper, PerspectiveCamera, AmbientLight, PointLight, WebGLRenderer, BoxBufferGeometry, MeshBasicMaterial,
+      BufferGeometry, Mesh, Points, PointsMaterial, Vector3, Color, MathUtils, Particle, Float32BufferAttribute,
+      TextureLoader, PlaneBufferGeometry, Texture
+    } from '../libs/three.js/Three.js'
+
+    let scene, render, points, camera, imageDOMMeshObj
+    
+    init()
+    async function init() {
+      InitScene()
+
+      await ImageLoader()
+
+      createPoints()
+      // cloudFn()
+      
+      InitCamera()
+
+      lightOrg()
+
+      InitRender()
+
+      animate()
+      // Render();
+
+    }
+
+
+    
+    function InitScene() {
+      scene = new Scene()
+      scene.background = new Color( 0x050505 )
+      scene.fog = new Fog(0x050505, 2000, 3500) //
+    }
+
+    function ImageLoader() {
+      return new Promise(resolve => {
+        scene.background = new TextureLoader().load( 'https://i.loli.net/2021/03/08/uYcvELkr4dqFj9w.jpg', function() {
+          resolve()
+        } );
+        // const material = new MeshBasicMaterial( { map: texture } );
+      })
+      
+      // scene.add(material)
+
+    }
+
+
+     // 创建点
+  function createPoints() {
+    const image = document.querySelector("img");
+    const texture = new Texture(image);
+    texture.needsUpdate = true;
+    const material = particleExplodeMaterial.clone();
+    material.uniforms.uTexture.value = texture;
+    const imageDOMMeshObj = new DOMMeshObject(
+      image,
+      scene,
+      material,
+      true
+    );
+    console.log(imageDOMMeshObj)
+    // imageDOMMeshObj.setPosition();
+    // imageDOMMeshObj = imageDOMMeshObj;
+  }
+
+
+    // 星空背景
+    function cloudFn() {
+      const geom = new BufferGeometry()
+      const el = document.querySelector('.cursor-pointer')
+      const rect = el.getBoundingClientRect();
+      console.log(rect)
+      const { top, left, width, height } = rect;
+      const geometry = new PlaneBufferGeometry(
+        width, height,
+        width, height
+      );
+
+      // const material = new MeshBasicMaterial({color: 0xffffff})
+      const material = new PointsMaterial({
+        size: 6,
+        vertexColors: true
+      })
+      // const mesh = new Points(geom, material)
+      const mesh = new Mesh(geom, material)
+      scene.add(mesh);
+
+      const x = left + width / 2 - window.innerWidth / 2;
+      const y = -(top + height / 2 - window.innerHeight / 2) + window.scrollY;
+      mesh.position.set(x, y, 0);
+
+
+      // const material = new PointsMaterial({
+      //   size: 6,
+      //   vertexColors: true
+      // })
+      // const positions = []
+      // const color = new Color()
+      // let colors = []
+
+      // const n = 2600
+      // for(var i = 0; i < 3000; i++) {
+      //   const x = (Math.random() - 0.5) * n;
+      //   const y = (Math.random() - 0.5) * n;
+      //   const z = (Math.random() - 0.5) * n;
+
+      //   positions.push( x, y, z );
+        
+      //   const vx = ( x / n ) + 0.5;
+      //   const vy = ( y / n ) + 0.5;
+      //   const vz = ( z / n ) + 0.5;
+
+      //   color.setRGB( vx, vy, vz );
+      //   colors.push( color.r, color.g, color.b )
+      // }
+
+      // geom.setAttribute( 'position', new Float32BufferAttribute( positions, 3 ) )  
+      // geom.setAttribute( 'color', new Float32BufferAttribute( colors, 3 ) )
+      // points = new Points(geom, material)  
+
+      // scene.add(points)
+    }
+
+    // 实例化相机
+    function InitCamera() {
+      camera = new PerspectiveCamera(45, window.innerWidth/window.innerHeight, 1, 3500);
+      camera.position.z = 2750;
+      camera.lookAt(scene.position)
+      scene.add(camera)
+    }
+    
+    // 设置光源
+    function lightOrg() {
+      // 环境光源
+      const ambientLight = new AmbientLight(0x000000)
+      scene.add(ambientLight)
+
+      // 点光源 设置阴影
+      const pointLight = new PointLight(0xffffff)
+      pointLight.position.set(800, 200, 300)
+      scene.add(pointLight)
+
+      const pointLight1 = new PointLight(0xffffff)
+      pointLight1.position.set(0, -500, 0)
+      scene.add(pointLight1)
+    }
+
+
+    // 实例化渲染器
+    function InitRender() {
+      render = new WebGLRenderer()
+      render.setPixelRatio( window.devicePixelRatio );
+      render.setSize(window.innerWidth, window.innerHeight)
+      document.getElementById("canvas").appendChild(render.domElement)
+    }
+    
+
+    // render.render(scene, camera)
+
+    function animate() {
+      requestAnimationFrame( animate );
+      Render();
+
+    }
+
+
+    function Render () {
+      // const time = Date.now() * 0.001;
+
+      // points.rotation.x = time * 0.25;
+      // points.rotation.y = time * 0.5;
+
+      render.render( scene, camera );
+    }
+
+
+
+    // 监听窗口大小重置渲染尺寸 自适应
+    window.addEventListener('resize', onWindowResize, false)
+
+    function onWindowResize() {
+      camera.aspect = window.innerWidth/window.innerHeight // 重新计算浏览器的长宽比
+      camera.updateProjectionMatrix() // 更新相机的投影矩阵
+      render.setSize(window.innerWidth, window.innerHeight) // 渲染器重新设置宽高
+    }
+  </script>
+</body>
+</html>

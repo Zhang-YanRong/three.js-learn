@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>学习</title>
+  <script text="module" src="../libs/three.js/Three.js"></script>
+  <script text="module" src="../libs/three.js/examples/jsm/controls/OrbitControls.js"></script>
+
+  </head>
+  <body>
+    <canvas id="c2d" class="c2d" width="1000" height="500"></canvas>
+    <button id="back">返回</button>
+    <script src="https://d3js.org/d3.v5.min.js"></script>
+    <script type="module">
+      // import * as THREE from './file/three.js-dev/build/three.module.js'
+      import {
+        Scene, PerspectiveCamera, WebGLRenderer, FileLoader, ExtrudeGeometry, MeshBasicMaterial, 
+        Mesh, Object3D, AxisHelper, Shape, AmbientLight, Vector3,
+        BufferGeometry, LineBasicMaterial, Line,
+        Raycaster,
+        CircleGeometry, RingGeometry, DoubleSide, QuadraticBezierCurve3, Color, VertexColors, BufferAttribute,
+        SphereGeometry, MeshPhongMaterial, 
+      } from "../libs/three.js/Three.js";
+
+      import { OrbitControls } from '../libs/three.js/examples/jsm/controls/OrbitControls.js'
+       // 以北京为中心 修改坐标
+      //  const projection = d3.geoMercator().center([116.412318, 39.909843]).translate([0, 0])
+      const defaultCenter = [114.298572, 30.584355]
+      const canvas = document.querySelector('#c2d')
+      // 渲染器
+      const renderer = new WebGLRenderer({ canvas })
+
+      const fov = 40 // 视野范围
+      const aspect = 2 // 相机默认值 画布的宽高比
+      const near = 0.1 // 近平面
+      const far = 10000 // 远平面
+      // 透视投影相机
+      const camera = new PerspectiveCamera(fov, aspect, near, far)
+      camera.position.set(0, 0, 300)
+      camera.lookAt(0, 0, 0)
+      // 控制相机
+      const controls = new OrbitControls(camera, canvas)
+      controls.update()
+
+  
+      let scene, map, jsonData, currenName, projection, level = 1
+
+      // 加载对应的json
+      function loaderJson(code = 'china', type = null) {
+        scene = new Scene()
+        map = new Object3D()
+
+        const loader = new FileLoader()
+        const path = './file/' + code + '.json'
+        loader.load(path, (data) => {
+          jsonData = JSON.parse(data)
+          if(type === 'small') {
+            if(level < 2 ) {
+              level++
+            }
+          }
+
+          if(level === 1) {
+            const myLine = lineConnect(projection([106.557691, 29.559296]), projection([121.495721, 31.236797]))
+            scene.add(myLine)
+            const line2 = lineConnect(projection([106.557691, 29.559296]), projection([104.006215, 30.650055]))
+            scene.add(line2)
+            const line3 = lineConnect(projection([106.557691, 29.559296]), projection([116.396795, 39.93242]))
+            scene.add(line3)
+            const line4 = lineConnect(projection([106.557691, 29.559296]), projection([87.617099, 43.863737]))
+            scene.add(line4)
+          }
+          
+          operationData(jsonData)
+        })
+      }
+
+      // 过滤筛选当前选中的哪个省的code
+      function fileCurrentCode(type) {
+        if(currenName) {
+          let data = jsonData.features
+          for(let i = 0; i < data.length; i++) {
+            if(data[i].properties.name === currenName) {
+              projection = d3.geoMercator().center(data[i].properties.center).translate([0, 0])
+              loaderJson(data[i].properties.adcode, type)
+              return
+            }
+          }
+        } else {
+          projection = d3.geoMercator().center(defaultCenter).translate([0, 0])
+          loaderJson()
+        }    
+
+      }
+
+      // 渲染地图入口
+      fileCurrentCode()
+
+      
+      // 坐标轴 辅助
+      var axes = new AxisHelper(700)
+      scene.add(axes)
+
+      const color = 0xffffff
+      const intensity = 1
+      // 环境光
+      const light = new AmbientLight(color, intensity)
+      // 加入场景
+      scene.add(light)
+
+      /**
+       * 立体几何图形
+       * @param polygon 多边形 点数组
+       * @param color 材质颜色
+       * */
+      function drawExtrudeMesh(polygon, color, projection) {
+        const shape = new Shape()
+        // polygon.forEach((row, i) => {
+        //   const [x, y] = [row[0], row[1]]
+        //   if (i === 0) {
+        //     shape.moveTo(x, y)
+        //   }
+        //   shape.lineTo(x, y)
+        // })
+        polygon.forEach((row, i) => {
+          const [x, y] = projection(row)
+          if (i === 0) {
+            shape.moveTo(x, -y)
+          }
+          shape.lineTo(x, -y)
+        })
+
+        // 拉伸 2维转3D
+        // 通过 ExtrudeGeometry 可以从一个二维图形创建出一个三维图形。用它创建Mesh时，如果想把面和延伸的边给予不同的材质，用一个材质的数组，第一项是面的材质，第二项是拉抻的边的材质。
+        const geometry = new ExtrudeGeometry(shape, {
+          depth: 5,
+          bevelEnabled: false
+        })
+        const material = new MeshBasicMaterial({
+          color: color,
+          transparent: true,
+          opacity: 0.5
+        })
+        return new Mesh(geometry, material)
+      }
+
+      /**
+       * 边框 图形绘制
+       * @param polygon 多边形 点数组
+       * @param color 材质颜色
+       * */
+      function lineDraw(polygon, color, projection) {
+        const lineGeometry = new BufferGeometry()
+        const pointsArray = new Array()
+        polygon.forEach((row) => {
+
+          const [x, y] = projection(row)
+          // 创建三维点
+          pointsArray.push(new Vector3(x, -y, 9))
+        })
+
+        // 放入多个点
+        lineGeometry.setFromPoints(pointsArray)
+
+        const lineMaterial = new LineBasicMaterial({
+          color: color
+        })
+        return new Line(lineGeometry, lineMaterial)
+      }
+
+
+      // 解析数据
+      function operationData(jsonData) {
+        const features = jsonData.features
+
+        features.forEach((feature) => {
+          // 单个省份 对象
+          const province = new Object3D()
+          // 地址
+          province.properties = feature.properties.name
+          const coordinates = feature.geometry.coordinates
+          const color = 'yellow'
+
+          if (feature.geometry.type === 'MultiPolygon') {
+            // 多个，多边形
+            coordinates.forEach((coordinate) => {
+              // coordinate 多边形数据
+              coordinate.forEach((rows) => {
+                const mesh = drawExtrudeMesh(rows, color, projection)
+                const line = lineDraw(rows, color, projection)
+                // 唯一标识
+                mesh.properties = feature.properties.name
+
+                province.add(line)
+                province.add(mesh)
+              })
+            })
+          }
+
+          if (feature.geometry.type === 'Polygon') {
+            // 多边形
+            coordinates.forEach((coordinate) => {
+              const mesh = drawExtrudeMesh(coordinate, color, projection)
+              const line = lineDraw(coordinate, color, projection)
+
+              // 唯一标识
+              mesh.properties = feature.properties.name
+
+              province.add(line)
+              province.add(mesh)
+            })
+          }
+          map.add(province)
+        })
+
+        // 层级越深放大比例越大
+        let scale = 2 * (level - 1) + 1
+        map.scale.set(scale, scale, 1)
+        scene.add(map)
+      }
+
+      // 计算 以画布 开始为（0，0）点 的鼠标坐标
+      function getCanvasRelativePosition(event) {
+        const rect = canvas.getBoundingClientRect()
+        return {
+          x: ((event.clientX - rect.left) * canvas.width) / rect.width,
+          y: ((event.clientY - rect.top) * canvas.height) / rect.height
+        }
+      }
+      /**
+       * 获取鼠标在three.js 中归一化坐标
+       * */
+      function setPickPosition(event) {
+        let pickPosition = { x: 0, y: 0 }
+        // 计算后 以画布 开始为 （0，0）点
+        const pos = getCanvasRelativePosition(event)
+        // 数据归一化
+        pickPosition.x = (pos.x / canvas.width) * 2 - 1
+        pickPosition.y = (pos.y / canvas.height) * -2 + 1
+
+        return pickPosition
+      }
+
+      // 监听鼠标
+      window.addEventListener('click', onRay)
+      // 全局对象
+      let lastPick = null
+      function onRay(event) {
+        let pickPosition = setPickPosition(event)
+        // 将2d视口的x和y坐标转换成three.js场景中的3d坐标
+        const raycaster = new Raycaster()
+        // 用一个新的原点和方向向量来更新射线
+        raycaster.setFromCamera(pickPosition, camera)
+        /**
+         * 计算物体和射线的交点
+         * intersectObjects(object, recursive)
+         * object — 用来检测和射线相交的物体。 
+         * recursive — 如果为true，它还检查所有后代。否则只检查该对象本身。缺省值为false。
+         * 返回数组每一个对象的内容 [ { distance, point, face, faceIndex, indices, object }, ... ]
+         * distance – 射线的起点到相交点的距离 
+         * point – 在世界坐标中的交叉点 
+         * face – 相交的面 
+         * faceIndex – 相交的面的索引 
+         * indices – 组成相交面的顶点索引 
+         * object – 相交的对象
+        */
+        const intersects = raycaster.intersectObjects([map], true)
+        // 数组大于0 表示有相交对象
+        if (intersects.length > 0) {
+          if (lastPick) {
+            if (lastPick.object.properties !== intersects[0].object.properties) {
+              lastPick.object.material.color.set('yellow')
+              lastPick = null
+            }
+          }
+
+          // type为Mesh 才表示点击的是地图 是line时候表示点击的是线条
+          if (intersects[0].object.type === "Mesh") {
+            intersects[0].object.material.color.set('blue')
+          }
+
+          currenName = intersects[0].object.properties
+          lastPick = intersects[0]
+
+          // 大于2层时候不在进入下一层
+          if(level >= 2) return
+          fileCurrentCode('small')
+
+        } else {
+          if (lastPick) {
+            // 复原
+            if (lastPick.object.properties) {
+              lastPick.object.material.color.set('yellow')
+              lastPick = null
+              fileCurrentCode()
+            }
+          }
+        }
+      }
+
+      // 圆环网格对象组
+      const circleYs = []
+      /**
+      * 目标位置
+      * */
+      function spotCircle(spot) {
+        // 圆点
+        const geometry1 = new CircleGeometry(0.5, 200)
+        const material1 = new MeshBasicMaterial({ color: 0x0000ff, side: DoubleSide })
+        const circle = new Mesh(geometry1, material1)
+        // 绘制地图时 y轴取反 这里同步
+        circle.position.set(spot[0], -spot[1], spot[2] + 0.1)
+        scene.add(circle)
+
+        // 圆环
+        const geometry2 = new RingGeometry(0.5, 0.7, 50)
+        // transparent 设置 true 开启透明
+        const material2 = new MeshBasicMaterial({ color: 0x0000ff, side: DoubleSide, transparent: true })
+        const circleY = new Mesh(geometry2, material2)
+        // 绘制地图时 y轴取反 这里同步
+        circleY.position.set(spot[0], -spot[1], spot[2] + 0.1)
+        scene.add(circleY)
+
+        circleYs.push(circleY)
+      }
+
+      /**
+       * 两点链接飞线
+       * */
+      function lineConnect(posStart, posEnd) {
+        // 根据目标坐标设置3D坐标  z轴位置在地图表面
+        const [x0, y0, z0] = [...posStart, 10.01]
+        const [x1, y1, z1] = [...posEnd, 10.01]
+
+        // 使用QuadraticBezierCurve3() 创建 三维二次贝塞尔曲线
+        const curve = new QuadraticBezierCurve3(
+          new Vector3(x0, -y0, z0),
+          new Vector3((x0 + x1) / 2, -(y0 + y1) / 2, 20),
+          new Vector3(x1, -y1, z1)
+        )
+
+        // 绘制 目标位置
+        spotCircle([x0, y0, z0])
+        spotCircle([x1, y1, z1])
+
+        // 绘制随着线移动的球
+        moveSpot(curve)
+
+        const lineGeometry = new BufferGeometry()
+        // 获取曲线 上的50个点
+        var points = curve.getPoints(50)
+        var positions = []
+        var colors = []
+        var color = new Color()
+
+        // 给每个顶点设置演示 实现渐变
+        for (var j = 0; j < points.length; j++) {
+          color.setHSL(0.81666 + j, 0.88, 0.715 + j * 0.0025) // 粉色
+          colors.push(color.r, color.g, color.b)
+          positions.push(points[j].x, points[j].y, points[j].z)
+        }
+        // 放入顶点 和 设置顶点颜色
+        lineGeometry.addAttribute('position', new BufferAttribute(new Float32Array(positions), 3, true))
+        lineGeometry.addAttribute('color', new BufferAttribute(new Float32Array(colors), 3, true))
+
+        const material = new LineBasicMaterial({ vertexColors: VertexColors, side: DoubleSide })
+        const line = new Line(lineGeometry, material)
+
+        return line
+      }
+
+      // 移动物体网格对象组
+      const moveSpots = []
+      /**
+       * 线上移动物体
+       * */
+      function moveSpot(curve) {
+        // 线上的移动物体
+        const aGeo = new SphereGeometry(0.4, 0.4, 0.4)
+        const aMater = new MeshPhongMaterial({ color: 0x0000ff, side: DoubleSide })
+        const aMesh = new Mesh(aGeo, aMater)
+        // 保存曲线实例
+        aMesh.curve = curve
+        aMesh._s = 0
+        scene.add(aMesh)
+
+        moveSpots.push(aMesh)
+      }
+
+      // 渲染
+      function render() {
+        circleYs.forEach(function (mesh) {
+          // 目标 圆环放大 并 透明
+          mesh._s += 0.01
+          mesh.scale.set(1 * mesh._s, 1 * mesh._s, 1 * mesh._s)
+          if (mesh._s <= 2) {
+            mesh.material.opacity = 2 - mesh._s
+          } else {
+            mesh._s = 1
+          }
+        })
+
+        moveSpots.forEach(function (mesh) {
+          mesh._s += 0.006
+          let tankPosition = new Vector3()
+          tankPosition = mesh.curve.getPointAt(mesh._s % 1)
+          mesh.position.set(tankPosition.x, tankPosition.y, tankPosition.z)
+        })
+
+        renderer.render(scene, camera)
+        requestAnimationFrame(render)
+      }
+      requestAnimationFrame(render)
+
+      // 监听返回按钮 修改层级 重新渲染上一层地图
+      document.getElementById('back').addEventListener('click', function(){
+        if(level > 1) {
+          level--
+          switch(level) {
+            case 1:
+            currenName = null
+            break;
+
+            default:
+            currenName = null
+            break;
+          }
+          fileCurrentCode()
+        }
+      })
+    </script>
+  </body>
+</html>

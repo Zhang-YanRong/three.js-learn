@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+  <script text="module" src="../libs/three.js/Three.js"></script>
+
+  <style>
+    #c2d {
+      width: 100%;
+      height: 100vh;
+    }
+  </style>
+</head>
+<body>
+<canvas id="c2d" class="c2d" width="1000" height="500"></canvas>
+
+  <script type="module">
+
+import { Scene, WebGLRenderer, PerspectiveCamera, DoubleSide, Shape, Group, Path, ShapeGeometry,MeshPhongMaterial, LineBasicMaterial, Mesh, ExtrudeGeometry} from "../libs/three.js/Three.js";
+import { OrbitControls } from '../libs/three.js/examples/jsm/controls/OrbitControls.js'
+
+// 场景
+const scene = new Scene()
+
+const canvas = document.querySelector('#c2d')
+// 渲染器
+const renderer = new WebGLRenderer({ canvas })
+
+const fov = 40 // 视野范围
+const aspect = 2 // 相机默认值 画布的宽高比
+const near = 0.1 // 近平面
+const far = 10000 // 远平面
+
+// 透视投影相机
+const camera = new PerspectiveCamera(fov, aspect, near, far)
+camera.position.set(0, 0, 300)
+camera.lookAt(0, 0, 0)
+
+// 控制相机
+const controls = new OrbitControls(camera, canvas)
+controls.update()
+
+// 一个外轮廓圆弧嵌套三个内圆弧轮廓
+var shape = new Shape(); //Shape对象
+//外轮廓
+shape.arc(0, 0, 100, 0, 2 * Math.PI);
+// 内轮廓1
+var path1 = new Path();
+path1.arc(0, 0, 40, 0, 2 * Math.PI);
+ 
+//三个内轮廓分别插入到holes属性中
+shape.holes.push(path1);
+
+ 
+// var material=new MeshBasicMaterial({
+//     color:0x00ff00,//三角面颜色
+//     side:DoubleSide//两面可见
+// });//材质对象
+
+const material = new MeshPhongMaterial({
+          color: 0x00ff00,
+          // transparent: true,
+          opacity: 1,
+          side:DoubleSide//两面可见
+})
+//material.wireframe = true;//线条模式渲染(查看细分数)
+// var mesh=new Mesh(geometry,material);//旋转网格模型对象
+ 
+// 一个外轮廓圆弧嵌套三个内圆弧轮廓
+var shape = new Shape(); //Shape对象
+shape.moveTo(0,0);
+shape.lineTo(0,100);
+shape.lineTo(100,100);
+shape.lineTo(100, 0);
+var geometry2 = new ShapeGeometry(shape, 30);
+var mesh2=new Mesh(geometry2,material);//旋转网格模型对象
+scene.add(mesh2)
+
+const heartShape = new Shape();
+
+heartShape.moveTo( 25, 25 );
+heartShape.bezierCurveTo( 25, 25, 20, 0, 0, 0 );
+heartShape.bezierCurveTo( - 30, 0, - 30, 35, - 30, 35 );
+heartShape.bezierCurveTo( - 30, 55, - 10, 77, 25, 95 );
+heartShape.bezierCurveTo( 60, 77, 80, 55, 80, 35 );
+heartShape.bezierCurveTo( 80, 35, 80, 0, 50, 0 );
+heartShape.bezierCurveTo( 35, 0, 25, 25, 25, 25 );
+
+const extrudeSettings = { depth: 8, bevelEnabled: true, bevelSegments: 2, steps: 2, bevelSize: 1, bevelThickness: 1 };
+
+const geometry = new ExtrudeGeometry( heartShape, extrudeSettings );
+
+const mesh = new Mesh( geometry, material );
+scene.add(mesh)
+
+renderer.render( scene, camera );
+	
+  </script>
+  
+</body>
+</html>
